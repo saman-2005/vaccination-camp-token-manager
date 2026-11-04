@@ -1,0 +1,162 @@
+#include<iostream>
+using namespace std;
+class vaccination{
+      private:
+      int tokennumber;
+      string name;
+      int age;
+      string vaccine;
+
+      static int totalRecords;
+
+     public:
+     void setDetails(int t, string n, int a, string v){
+        this-> tokennumber = t;
+        this -> name = n;
+        this-> age = a;
+        this-> vaccine =v;
+
+       totalRecords++; 
+     }
+     inline void display(){
+        cout << "\nToken Number: " << tokennumber;
+        cout << "\nName: " << name;
+        cout << "\nAge: " << age;
+        cout << "\nVaccine: " << vaccine << endl;
+     } 
+     int gettoken(){
+        return tokennumber;
+     }
+     static int getTotal() {
+        return totalRecords;
+    }
+     friend void showToken(vaccination obj);
+};
+int vaccination::totalRecords = 0;
+
+// Friend function definition
+void showToken(vaccination obj) {
+    cout << "\nRegistered Token: " << obj.tokennumber;
+    cout << "\nBeneficiary: " << obj.name << endl;
+}
+
+// Maximum records
+const int SIZE = 100;
+
+// Check duplicate token
+bool checkDuplicate(vaccination arr[], int count, int token) {
+
+    for (int i = 0; i < count; i++) {
+
+        if (arr[i].gettoken() == token) {
+            return true;
+        }
+    }
+    return false;
+}
+void addToken(vaccination arr[], int &count) {
+
+    if (count == SIZE) {
+        cout << "\nStorage is full!";
+        return;
+    }
+
+    int token, age;
+    string name, vaccine;
+
+    cout << "\nEnter Token Number: ";
+    cin >> token;
+
+    if (token <= 0 || checkDuplicate(arr, count, token)) {
+        cout << "\nInvalid or Duplicate Token!";
+        return;
+    }
+
+    cin.ignore();
+
+    cout << "Enter Name: ";
+    getline(cin, name);
+
+    cout << "Enter Age: ";
+    cin >> age;
+
+    cin.ignore();
+
+    cout << "Enter Vaccine Name: ";
+    getline(cin, vaccine);
+
+    if (age <= 0 || name.empty() || vaccine.empty()) {
+        cout << "\nInvalid Details!";
+        return;
+    }
+
+    arr[count].setDetails(token, name, age, vaccine);
+
+    count++;
+
+    cout << "\nToken Registered Successfully!";
+
+    showToken(arr[count - 1]);
+}
+
+// Read operation
+void viewTokens(vaccination arr[], int count) {
+
+    if (count == 0) {
+        cout << "\nNo Records Found!";
+        return;
+    }
+
+    // Pointer to array of objects
+    vaccination *ptr = arr;
+
+    cout << "\n===== VACCINATION RECORDS =====\n";
+
+    for (int i = 0; i < count; i++) {
+        (ptr + i)->display();
+    }
+
+    cout << "\nTotal Records: "
+         << vaccination::getTotal();
+}
+
+// Main function
+int main() {
+
+    vaccination arr[SIZE];
+
+    int count = 0;
+    int choice; 
+
+    do {
+
+        cout << "\n\n===== VACCINATION CAMP TOKEN MANAGER =====";
+        cout << "\n1. Create Token";
+        cout << "\n2. View Tokens";
+        cout << "\n3. Exit";
+
+        cout << "\nEnter Choice: ";
+        cin >> choice;
+
+        switch (choice) {
+
+            case 1:
+                addToken(arr, count);
+                break;
+
+            case 2:
+                viewTokens(arr, count);
+                break;
+
+            case 3:
+                cout << "\nThank You!";
+                break;
+
+            default:
+                cout << "\nInvalid Choice!";
+        }
+
+    } while (choice != 3);
+
+    return 0;
+}
