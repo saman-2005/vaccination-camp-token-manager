@@ -1,154 +1,345 @@
-#include<iostream>
+#include <iostream>
+#include <fstream>
+#include <cstring>
+#include <limits>
 using namespace std;
-class vaccination{
-      private:
-      int tokennumber;
-      string name;
-      int age;
-      string vaccine;
 
-      static int totalRecords;
+struct FileRecord {
+    int tokennumber;
+    char name[50];
+    int age;
+    char vaccine[30];
+};
+class vaccination {
+private:
+    int tokennumber;
+    char name[50];
+    int age;
+    char vaccine[30];
+    static int totalRecords;
 
-     public:
-     void setDetails(int t, string n, int a, string v){
-        this-> tokennumber = t;
-        this -> name = n;
-        this-> age = a;
-        this-> vaccine =v;
-
-       totalRecords++; 
-     }
-     inline void display(){
+public:
+    // Default Constructor
+    vaccination() {
+        tokennumber = 0;
+        age = 0;
+        strcpy(name, "");
+        strcpy(vaccine, "");
+    }
+    // Parameterized Constructor
+    vaccination(int t, const char n[], int a, const char v[]) {
+        tokennumber = t;
+        age = a;
+        strncpy(name, n, 49);
+        name[49] = '\0';
+        strncpy(vaccine, v, 29);
+        vaccine[29] = '\0';
+    }
+    // Copy Constructor
+    vaccination(const vaccination &obj) {
+        tokennumber = obj.tokennumber;
+        age = obj.age;
+        strcpy(name, obj.name);
+        strcpy(vaccine, obj.vaccine);
+    }
+    // Destructor
+    ~vaccination() {
+    }
+    // Convert object into file record
+    FileRecord getFileRecord() const {
+        FileRecord record;
+        record.tokennumber = tokennumber;
+        record.age = age;
+        strcpy(record.name, name);
+        strcpy(record.vaccine, vaccine);
+        return record;
+    }
+    // Load file record into object
+    void setFileRecord(FileRecord record) {
+        tokennumber = record.tokennumber;
+        age = record.age;
+        strcpy(name, record.name);
+        strcpy(vaccine, record.vaccine);
+    }
+    int getToken() const {
+        return tokennumber;
+    }
+    void display() const {
         cout << "\nToken Number: " << tokennumber;
         cout << "\nName: " << name;
         cout << "\nAge: " << age;
         cout << "\nVaccine: " << vaccine << endl;
-     } 
-     int gettoken(){
-        return tokennumber;
-     }
-     static int getTotal() {
+    }
+    static void increaseTotal() {
+        totalRecords++;
+    }
+
+    static int getTotal() {
         return totalRecords;
     }
-     friend void showToken(vaccination obj);
 };
+
 int vaccination::totalRecords = 0;
+// Search Token using seekg()
+bool searchToken(int token) {
+    fstream file("tokens.dat", ios::in | ios::binary);
 
-// Friend function definition
-void showToken(vaccination obj) {
-    cout << "\nRegistered Token: " << obj.tokennumber;
-    cout << "\nBeneficiary: " << obj.name << endl;
-}
+    if (!file) {
+        cout << "\nFile not found!";
+        return false;
+    }
+    FileRecord record;
+    int index = 0;
+    while (true) {
+        file.seekg(index * sizeof(FileRecord), ios::beg);
 
-// Maximum records
-const int SIZE = 100;
-
-// Check duplicate token
-bool checkDuplicate(vaccination arr[], int count, int token) {
-
-    for (int i = 0; i < count; i++) {
-
-        if (arr[i].gettoken() == token) {
+        if (!file.read((char*)&record, sizeof(record))) {
+            break;
+        }
+        if (record.tokennumber == token) {
+            vaccination obj;
+            obj.setFileRecord(record);
+            cout << "\nRecord Found!";
+            obj.display();
+            file.close();
             return true;
         }
+        index++;
     }
+    file.close();
+    cout << "\nToken Not Found!";
     return false;
 }
-void addToken(vaccination arr[], int &count) {
-
-    if (count == SIZE) {
-        cout << "\nStorage is full!";
-        return;
-    }
-
+// Add New Token
+void addToken() {
     int token, age;
-    string name, vaccine;
+    char name[50], vaccine[30];
 
     cout << "\nEnter Token Number: ";
     cin >> token;
 
-    if (token <= 0 || checkDuplicate(arr, count, token)) {
-        cout << "\nInvalid or Duplicate Token!";
+    if (cin.fail()) {
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        cout << "\nInvalid Token Number!";
         return;
     }
 
-    cin.ignore();
+    if (token <= 0) {
+        cout << "\nInvalid Token Number!";
+        return;
+    }
 
-    cout << "Enter Name: ";
-    getline(cin, name);
+    // Check Duplicate Token
+    fstream check("tokens.dat", ios::in | ios::binary);
+    FileRecord record;
+    bool duplicate = false;
+    if (check) {
+        while (check.read((char*)&record, sizeof(record))) {
+            if (record.tokennumber == token) {
+                duplicate = true;
+                break;
+            }
+        }
+    }
+    check.close();
+
+    if (duplicate) {
+        cout << "\nDuplicate Token Number!";
+        return;
+    }
+
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+    cout << "Enter Beneficiary Name: ";
+    cin.getline(name, 50);
 
     cout << "Enter Age: ";
     cin >> age;
 
-    cin.ignore();
+    if (cin.fail()) {
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        cout << "\nInvalid Age!";
+        return;
+    }
+
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
 
     cout << "Enter Vaccine Name: ";
-    getline(cin, vaccine);
+    cin.getline(vaccine, 30);
 
-    if (age <= 0 || name.empty() || vaccine.empty()) {
+    if (age <= 0 || strlen(name) == 0 || strlen(vaccine) == 0) {
         cout << "\nInvalid Details!";
         return;
     }
+    vaccination obj(token, name, age, vaccine);
+    vaccination copyObj(obj);
+    FileRecord newRecord = copyObj.getFileRecord();
 
-    arr[count].setDetails(token, name, age, vaccine);
+    // Write Binary Record
+    fstream file("tokens.dat", ios::out | ios::app | ios::binary);
+    if (!file) {
+        cout << "\nUnable to open file!";
+        return;
+    }
+    file.write((char*)&newRecord, sizeof(newRecord));
+    file.close();
 
-    count++;
-
+    vaccination::increaseTotal();
     cout << "\nToken Registered Successfully!";
-
-    showToken(arr[count - 1]);
 }
 
-// Read operation
-void viewTokens(vaccination arr[], int count) {
+// View All Tokens
+void viewTokens() {
+    fstream file("tokens.dat", ios::in | ios::binary);
 
-    if (count == 0) {
+    if (!file) {
         cout << "\nNo Records Found!";
         return;
     }
-
-    // Pointer to array of objects
-    vaccination *ptr = arr;
-
+    FileRecord record;
+    int count = 0;
     cout << "\n===== VACCINATION RECORDS =====\n";
 
-    for (int i = 0; i < count; i++) {
-        (ptr + i)->display();
+    while (file.read((char*)&record, sizeof(record))) {
+        vaccination obj;
+        obj.setFileRecord(record);
+        obj.display();
+        count++;
     }
-
-    cout << "\nTotal Records: "
-         << vaccination::getTotal();
+    cout << "\nTotal Records: " << count;
+    file.close();
 }
 
-// Main function
+// Update Token using seekp()
+void updateToken() {
+    int token;
+    cout << "\nEnter Token Number to Update: ";
+    cin >> token;
+
+    if (cin.fail()) {
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        cout << "\nInvalid Token Number!";
+        return;
+    }
+
+    fstream file("tokens.dat", ios::in | ios::out | ios::binary);
+
+    if (!file) {
+        cout << "\nFile Not Found!";
+        return;
+    }
+
+    FileRecord record;
+    int index = 0;
+    bool found = false;
+    while (true) {
+        file.seekg(index * sizeof(FileRecord), ios::beg);
+
+        if (!file.read((char*)&record, sizeof(record))) {
+            break;
+        }
+
+        if (record.tokennumber == token) {
+            found = true;
+            break;
+        }
+
+        index++;
+    }
+    if (!found) {
+        cout << "\nToken Not Found!";
+        file.close();
+        return;
+    }
+    char name[50], vaccine[30];
+    int age;
+
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+    cout << "Enter Updated Name: ";
+    cin.getline(name, 50);
+
+    cout << "Enter Updated Age: ";
+    cin >> age;
+
+    if (cin.fail()) {
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        cout << "\nInvalid Age!";
+        file.close();
+        return;
+    }
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+    cout << "Enter Updated Vaccine: ";
+    cin.getline(vaccine, 30);
+    if (age <= 0 || strlen(name) == 0 || strlen(vaccine) == 0) {
+        cout << "\nInvalid Details!";
+        file.close();
+        return;
+    }
+    vaccination obj(token, name, age, vaccine);
+    FileRecord updatedRecord = obj.getFileRecord();
+
+    // Move Output Pointer using seekp()
+    file.seekp(index * sizeof(FileRecord), ios::beg);
+    file.write((char*)&updatedRecord, sizeof(updatedRecord));
+    file.close();
+    cout << "\nRecord Updated Successfully!";
+}
+
+// Main Function
 int main() {
-
-    vaccination arr[SIZE];
-
-    int count = 0;
-    int choice; 
-
+    int choice;
     do {
-
         cout << "\n\n===== VACCINATION CAMP TOKEN MANAGER =====";
-        cout << "\n1. Create Token";
+        cout << "\n1. Add Token";
         cout << "\n2. View Tokens";
-        cout << "\n3. Exit";
-
+        cout << "\n3. Search Token";
+        cout << "\n4. Update Token";
+        cout << "\n5. Exit";
         cout << "\nEnter Choice: ";
+
         cin >> choice;
 
+        if (cin.fail()) {
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            cout << "\nInvalid Choice!";
+            continue;
+        }
         switch (choice) {
-
             case 1:
-                addToken(arr, count);
+                addToken();
                 break;
 
             case 2:
-                viewTokens(arr, count);
+                viewTokens();
                 break;
 
-            case 3:
+            case 3: {
+                int token;
+                cout << "\nEnter Token Number: ";
+                cin >> token;
+
+                if (cin.fail()) {
+                    cin.clear();
+                    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                    cout << "\nInvalid Token Number!";
+                    break;
+                }
+
+                searchToken(token);
+                break;
+            }
+
+            case 4:
+                updateToken();
+                break;
+
+            case 5:
                 cout << "\nThank You!";
                 break;
 
@@ -156,7 +347,4 @@ int main() {
                 cout << "\nInvalid Choice!";
         }
 
-    } while (choice != 3);
-
-    return 0;
-}
+    } while (choice != 5);    
